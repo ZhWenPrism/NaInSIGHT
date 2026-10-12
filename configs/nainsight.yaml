@@ -1,0 +1,101 @@
+# NaInSIGHT study, graph, model and training parameters.  No data locations live here:
+# data sources are declared by the site adapters referenced from configs/local/paths.yaml.
+seed: 2026
+
+cohort:
+  study_period: [2017, 2023]
+  min_age_years: 18
+  surgery_duration_h: [0.25, 24.0]
+  admit_tolerance_h: 24            # admission time is recorded as a calendar date
+  min_postop_stay_h: 78            # first rolling landmark (24 h) + 6-h gap + 48-h window
+  preop_sodium: {threshold: 135.0, rule: any, lookback_days: 30}
+  index_admission: first_eligible
+  split:
+    train_years: [2017, 2022]
+    test_years: [2023]
+    val_fraction: 0.10
+
+events:
+  preop_lookback_days: 30
+  max_postop_h: 336
+  vital_bin_h: 4
+  io_bin_h: 4
+
+outcome:
+  sodium_concepts: [LAB_NA]
+  threshold: 135.0
+  severity_cutpoints: [135.0, 130.0]   # normal >= 135 | mild [130, 135) | moderate-severe < 130
+  horizons_h: [24, 48]
+  segment_h: 24
+  baseline: {enabled: true, time_h: 0, gap_h: 0}
+  rolling: {enabled: true, first_h: 24, last_h: 168, step_h: 24, gap_h: 6}
+  require_full_window_in_hospital: true
+  nadir_requires_segment_coverage: true
+
+tokens:
+  max_len: 1024
+  preop_window_h: 168
+  value_clip: 6.0
+  dose_levels: 4
+  min_concept_count: 20
+  static_min_category_count: 20
+
+graph:
+  dose_levels: 4
+  lags_h: [6, 12, 24, 48]
+  dev_lags_h: [6, 12, 24, 30, 48, 54]
+  exposure_window_h: 6
+  anchor_step_h: 6
+  baseline_lookback_h: 24
+  outcome_tolerance: {min_h: 2.0, frac: 0.25}
+  urine_rate_window_h: 6
+  min_icu_stay_h: 24
+  min_age_years: 18
+  max_anchors_per_fit: 600000
+  min_exposed: 30
+  ridge: 1.0e-6
+  gnn:
+    hidden: 128
+    out_dim: 64
+    layers: 3
+    dropout: 0.1
+    epochs: 600
+    lr: 1.0e-3
+    weight_decay: 1.0e-4
+    mask_rate: 0.15
+    loss_weights: {recon: 1.0, sign: 0.5, link: 0.5}
+
+model:
+  d_model: 128
+  n_stages: 2
+  dropout: 0.1
+  ssm: {d_state: 16, expand: 2, headdim: 32, d_conv: 4, chunk: 64, time_aware: true}
+  transformer: {n_heads: 4, ff_mult: 4, time_buckets_h: [1, 2, 4, 8, 12, 24, 48, 72, 120, 168, 336]}
+  interaction: {fine_h: 6, coarse_h: 24, n_heads: 4}
+  adapter: {n_heads: 4, top_k: 8, prior_trainable: false, gate_bias_init: -1.0, mechanistic: true}
+  fusion_dim: 256
+  head_hidden: 128
+  ablation: []      # no_graph_prior | random_prior | no_ssm | no_transformer | no_interaction | no_static
+                    # | no_mechanistic | no_gate | dense_prior_attention
+
+train:
+  batch_size: 16
+  epochs: 40
+  lr: 3.0e-4
+  weight_decay: 0.01
+  warmup_frac: 0.05
+  grad_clip: 1.0
+  patience: 6
+  device: auto
+  amp: false
+  max_steps_per_epoch: null
+  loss:
+    weighting: uncertainty          # uncertainty | fixed
+    fixed_weights: {risk: 1.0, severity: 1.0, nadir: 0.5, consistency: 0.1}
+    consistency_weight: 0.1
+    pos_weight: balanced_sqrt       # none | balanced | balanced_sqrt
+    nadir_sigma_floor: 0.5
+
+evaluate:
+  bootstrap: 1000
+  ci: 0.95

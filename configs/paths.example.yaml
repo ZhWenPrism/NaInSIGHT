@@ -1,0 +1,6 @@
+# Copy to configs/local/paths.yaml (git-ignored) and fill in.
+workdir: /absolute/path/to/a/work/directory      # interim artefacts and runs (outside the repository)
+sources:
+  development: configs/local/development.yaml
+  reference: configs/local/reference.yaml
+  external: null                                 # configs/local/external.yaml when available

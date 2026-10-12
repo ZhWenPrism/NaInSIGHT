@@ -1,0 +1,84 @@
+# Development-site adapter template.  Copy to configs/local/development.yaml and replace every <...>.
+# Canonical field names (left) are fixed; source column names / indices (right) are site-specific.
+root: </absolute/path/to/the/site/export>
+
+registry:                                   # one row per surgical admission
+  path: <relative/path/to/registry.xlsx>
+  format: xlsx                              # csv | csv_headerless | xlsx | parquet
+  columns: {stay_key: <admission id>, subject_key: <patient id>, admit_time: <admission time>,
+            surgery_start: <operation start>, surgery_end: <operation end>, discharge_time: <discharge time>,
+            procedure_text: <operation name>, age_years: <age>, sex_male: <sex (1 male, 0 female)>}
+  static:                                   # only covariates known at the end of surgery
+    bmi: {source: <col>, type: numeric, lo: 12, hi: 60}
+    hypertension: {source: <col>, type: binary, map: {<yes label>: 1, <no label>: 0}}
+    tumour_volume_cm3: {source: <col>, type: numeric, lo: 0.1, hi: 1500}
+    blood_loss_ml: {source: <col>, type: numeric, lo: 0, hi: 10000}
+    tumour_family: {source: <col>, type: category}
+    # ... smoking, alcohol, diabetes, epilepsy_history, kidney/cardiac/liver disease, repeat_surgery,
+    #     tumour location flags (loc_*), multi_region, crosses_tentorium, n_regions, deep_midline
+
+cohort_rules:
+  resection_include: <regex on procedure_text identifying tumour resection>
+  resection_exclude: <regex for biopsy-only procedures>
+
+labs:
+  sources:
+    - name: inpatient
+      path_glob: <relative/glob/*.csv>
+      format: csv_headerless
+      time_basis: report                    # report time defines availability and outcomes
+      columns: {subject_key: 0, request_date: 3, request_time: 4, report_date: 5, report_time: 6,
+                item_name: 10, item_code: 11, value: 13, unit: 14}
+    - name: outpatient                      # optional wide-format source (one column per test)
+      path: <relative/path.csv>
+      format: csv
+      layout: wide
+      columns: {subject_key: <col>, report_date: <col>, report_time: <col>}
+      value_columns: {LAB_NA: <col>, LAB_K: <col>, LAB_CL: <col>}
+  items:                                    # first matching concept wins
+    LAB_NA: [{name: <regex>, code: <regex>}]
+    LAB_K: [{name: <regex>, code: <regex>}]
+    LAB_CREA: [{name: <regex>, code: <regex>, exclude: <regex>}]
+    # LAB_NA_BG, LAB_CL, LAB_GLU, LAB_UREA, LAB_ALB, LAB_TCO2, LAB_CA, LAB_HGB, LAB_WBC, LAB_PLT, LAB_OSM, LAB_UNA, LAB_USG
+  unit_rules: {}                            # e.g. {LAB_GLU: {mg/dl: 0.0555}}
+
+vitals:
+  sources:
+    - path_glob: <relative/glob/*.csv>
+      format: csv
+      columns: {subject_key: <col>, time: <col>, item: <col>, value: <col>}
+      items: {VS_HR: [<regex>], VS_SBP: <regex>, VS_DBP: <regex>, VS_TEMP: <regex>, VS_RR: <regex>, VS_SPO2: <regex>}
+
+fluid_balance:
+  sources:
+    - path: <relative/path.csv>
+      format: csv
+      columns: {subject_key: <col>, time: <col>, item: <col>, value: <col>}
+      items: {IO_URINE: <regex>, IO_INTAKE: [<regex>], IO_DRAIN_CSF: [<regex>], IO_DRAIN_WOUND: [<regex>], IO_GI_LOSS: [<regex>]}
+
+medications:
+  source: administration_log                # administration_log (executed doses) | orders (expanded by frequency)
+  administration_log:
+    path_glob: <relative/glob/*.csv>
+    format: csv
+    columns: {subject_key: <col>, order_class: <col>, text: <product text>, value: <dose>, unit: <dose unit>,
+              route: <route>, scheduled_time: <col>, executed_time: <col>, flag: <executed flag>}
+    keep_order_class: <regex selecting medication orders>
+    executed_flag_values: [<value meaning executed>]
+  orders:
+    path: <relative/path.csv>
+    format: csv
+    columns: {subject_key: <col>, name: <col>, spec: <col>, value: <col>, unit: <col>, route: <col>,
+              start_time: <col>, end_time: <col>, frequency: <col>, order_type: <col>}
+    frequency_hours: {<stat label>: once, <once daily label>: 24, <twice daily label>: 12}
+    exclude_order_types: [<discharge medication label>]
+  exclude_text: <regex for topical / ophthalmic / inhaled forms>
+  ingredients:                              # ordered; canonical ingredient keys from nainsight/concepts.py
+    - {ingredient: mannitol, pattern: <regex>}
+    - {ingredient: hypertonic_saline, pattern: <regex>}
+    - {ingredient: dextrose_saline, pattern: <regex>}
+    - {ingredient: sodium_chloride, pattern: <regex>}
+    # ... every ingredient in concepts.INGREDIENTS that the site uses
+  routes: {<site route label>: IV}          # IV | PO | NG | IM | SC | IT (others -> OTHER)
+  unit_aliases: {<site unit label>: unit_dose}
+  defaults: {hypertonic_saline_pct: 10.0, sodium_chloride_pct: 0.9}

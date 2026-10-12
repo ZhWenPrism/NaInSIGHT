@@ -1,0 +1,12 @@
+# site-specific adapters and data locations never leave the local machine
+configs/local/
+*.parquet
+*.npz
+*.pt
+*.ckpt
+runs/
+interim/
+__pycache__/
+*.pyc
+.DS_Store
+.pytest_cache/

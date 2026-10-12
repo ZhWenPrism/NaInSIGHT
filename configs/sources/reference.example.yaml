@@ -1,0 +1,104 @@
+# Reference-population adapter (MIMIC-IV v3.1, hosp and icu modules; PhysioNet credentialed access).
+# Copy to configs/local/reference.yaml and set ``root`` to the local copy of the dataset.
+root: /absolute/path/to/mimic-iv-3.1
+tables:
+  admissions: {path: hosp/admissions.csv.gz, columns: {subject_key: subject_id, hadm_key: hadm_id, admit_time: admittime, discharge_time: dischtime}}
+  patients: {path: hosp/patients.csv.gz, columns: {subject_key: subject_id, anchor_age: anchor_age, anchor_year: anchor_year}}
+  icu_stays: {path: icu/icustays.csv.gz, columns: {subject_key: subject_id, hadm_key: hadm_id, icu_key: stay_id, in_time: intime, out_time: outtime}}
+  diagnoses: {path: hosp/diagnoses_icd.csv.gz, columns: {hadm_key: hadm_id, code: icd_code, version: icd_version}}
+  procedures: {path: hosp/procedures_icd.csv.gz, columns: {hadm_key: hadm_id, code: icd_code, version: icd_version}}
+  labs: {path: hosp/labevents.csv.gz, columns: {subject_key: subject_id, hadm_key: hadm_id, item: itemid, time: charttime, value: valuenum}}
+  med_admin: {path: hosp/emar.csv.gz, columns: {subject_key: subject_id, hadm_key: hadm_id, admin_key: emar_id, time: charttime, medication: medication, event: event_txt}}
+  med_detail: {path: hosp/emar_detail.csv.gz, columns: {admin_key: emar_id, dose: dose_given, unit: dose_given_unit}}
+  infusions: {path: icu/inputevents.csv.gz, columns: {icu_key: stay_id, start: starttime, end: endtime, item: itemid, amount: amount, unit: amountuom}}
+  outputs: {path: icu/outputevents.csv.gz, columns: {icu_key: stay_id, time: charttime, item: itemid, value: value}}
+lab_items: {LAB_NA: [50983, 52623], LAB_K: [50971, 52610], LAB_CL: [50902, 52535], LAB_GLU: [50931, 52569],
+            LAB_UREA: [51006, 52647], LAB_CREA: [50912, 52546], LAB_ALB: [50862, 53085]}
+unit_to_development: {GLU: 0.0555, UREA: 0.357, CREA: 88.4, ALB: 10.0, URINE: 24.0}
+administered_events: [Administered]
+med_ingredients:
+  - {ingredient: dexamethasone, pattern: "^dexamethasone", exclude: "ophth|cream|oint|otic|inhal|drop"}
+  - {ingredient: methylprednisolone, pattern: "methylpred"}
+  - {ingredient: hydrocortisone, pattern: "^hydrocortisone", exclude: "cream|oint|rectal|enema|foam"}
+  - {ingredient: prednisolone, pattern: "^prednisolone", exclude: "ophth|drop"}
+  - {ingredient: prednisone, pattern: "^prednisone"}
+  - {ingredient: furosemide, pattern: "^furosemide"}
+  - {ingredient: torasemide, pattern: "^torsemide"}
+  - {ingredient: bumetanide, pattern: "^bumetanide"}
+  - {ingredient: hydrochlorothiazide, pattern: "hydrochlorothiazide"}
+  - {ingredient: chlorthalidone, pattern: "chlorthalidone"}
+  - {ingredient: metolazone, pattern: "metolazone"}
+  - {ingredient: indapamide, pattern: "indapamide"}
+  - {ingredient: spironolactone, pattern: "spironolactone"}
+  - {ingredient: eplerenone, pattern: "eplerenone"}
+  - {ingredient: amiloride, pattern: "amiloride"}
+  - {ingredient: triamterene, pattern: "triamterene"}
+  - {ingredient: desmopressin, pattern: "desmopressin|ddavp"}
+  - {ingredient: vasopressin, pattern: "^vasopressin"}
+  - {ingredient: tolvaptan, pattern: "tolvaptan"}
+  - {ingredient: potassium_chloride, pattern: "^potassium chloride"}
+  - {ingredient: carbamazepine, pattern: "carbamazepine"}
+  - {ingredient: oxcarbazepine, pattern: "oxcarbazepine"}
+  - {ingredient: valproate, pattern: "valpro|divalproex"}
+  - {ingredient: levetiracetam, pattern: "levetiracetam"}
+  - {ingredient: phenobarbital, pattern: "phenobarbital"}
+  - {ingredient: phenytoin, pattern: "phenytoin"}
+  - {ingredient: lamotrigine, pattern: "lamotrigine"}
+  - {ingredient: topiramate, pattern: "topiramate"}
+  - {ingredient: lacosamide, pattern: "lacosamide"}
+  - {ingredient: zonisamide, pattern: "zonisamide"}
+  - {ingredient: gabapentin, pattern: "gabapentin"}
+  - {ingredient: pregabalin, pattern: "pregabalin"}
+  - {ingredient: escitalopram, pattern: "escitalopram"}
+  - {ingredient: citalopram, pattern: "citalopram"}
+  - {ingredient: sertraline, pattern: "sertraline"}
+  - {ingredient: fluoxetine, pattern: "fluoxetine"}
+  - {ingredient: paroxetine, pattern: "paroxetine"}
+  - {ingredient: venlafaxine, pattern: "venlafaxine"}
+  - {ingredient: duloxetine, pattern: "duloxetine"}
+  - {ingredient: mirtazapine, pattern: "mirtazapine"}
+  - {ingredient: quetiapine, pattern: "quetiapine"}
+  - {ingredient: olanzapine, pattern: "olanzapine"}
+  - {ingredient: haloperidol, pattern: "haloperidol"}
+  - {ingredient: risperidone, pattern: "risperidone"}
+  - {ingredient: hydromorphone, pattern: "hydromorphone"}
+  - {ingredient: morphine, pattern: "^morphine"}
+  - {ingredient: fentanyl, pattern: "^fentanyl"}
+  - {ingredient: oxycodone, pattern: "oxycodone"}
+  - {ingredient: tramadol, pattern: "tramadol"}
+  - {ingredient: pethidine, pattern: "meperidine"}
+  - {ingredient: esomeprazole, pattern: "esomeprazole"}
+  - {ingredient: omeprazole, pattern: "omeprazole"}
+  - {ingredient: pantoprazole, pattern: "pantoprazole"}
+  - {ingredient: lansoprazole, pattern: "lansoprazole"}
+  - {ingredient: rabeprazole, pattern: "rabeprazole"}
+unit_aliases: {"mg": mg, "g": g, "mcg": ug, "units": IU, "unit": IU, "mL": mL, "ml": mL, "TAB": unit_dose, "CAP": unit_dose}
+infusion_items:
+  227531: {ingredient: mannitol, kind: g}
+  220988: {ingredient: mannitol, kind: ml_at_pct, pct: 5}
+  220989: {ingredient: mannitol, kind: ml_at_pct, pct: 10}
+  220990: {ingredient: mannitol, kind: ml_at_pct, pct: 15}
+  220991: {ingredient: mannitol, kind: ml_at_pct, pct: 20}
+  220992: {ingredient: mannitol, kind: ml_at_pct, pct: 25}
+  225161: {ingredient: hypertonic_saline, kind: ml, na_pct: 3.0}
+  228341: {ingredient: hypertonic_saline, kind: ml, na_pct: 23.4}
+  225158: {ingredient: normal_saline, kind: ml, na_pct: 0.9}
+  225159: {ingredient: half_normal_saline, kind: ml, na_pct: 0.45}
+  225825: {ingredient: dextrose_saline, kind: ml, na_pct: 0.9}
+  225823: {ingredient: half_normal_saline, kind: ml, na_pct: 0.45}
+  225941: {ingredient: half_normal_saline, kind: ml, na_pct: 0.225}
+  225828: {ingredient: ringer_lactate, kind: ml, na_pct: 0.76}
+  225827: {ingredient: ringer_lactate, kind: ml, na_pct: 0.76}
+  220949: {ingredient: dextrose_water, kind: ml, na_pct: 0.0}
+  225797: {ingredient: free_water, kind: ml, na_pct: 0.0}
+  225944: {ingredient: free_water, kind: ml, na_pct: 0.0}
+  220862: {ingredient: albumin, kind: ml_at_pct, pct: 25}
+  220864: {ingredient: albumin, kind: ml_at_pct, pct: 5}
+  225166: {ingredient: potassium_chloride, kind: meq}
+  221794: {ingredient: furosemide, kind: mg}
+  228340: {ingredient: furosemide, kind: mg}
+  222315: {ingredient: vasopressin, kind: units}
+urine_items: [226559, 226560, 226627, 226631]
+subpopulation:
+  diagnosis: {"10": "^(C71|D33|D43|C7931)", "9": "^(191|2250|2375|1983)"}
+  procedure: {"10": "^00[BC][0-9A-D]", "9": "^01(2|5)"}

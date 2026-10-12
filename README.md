@@ -2,6 +2,8 @@
 
 **Knowledge-guided dynamic prediction of postoperative hyponatraemia after glioma resection**
 
+Developed in collaboration with **Beijing Tiantan Hospital**.
+
 NaInSIGHT predicts postoperative hyponatraemia from routinely collected perioperative electronic health
 record data. At the end of surgery and every 24 h thereafter, the model estimates the risk of
 hyponatraemia (serum sodium < 135 mmol/L), its ordinal severity and the serum sodium nadir over the next
@@ -13,6 +15,8 @@ through a patient-conditioned graph-prior adapter.
 ## Contents
 
 - [Framework](#framework)
+- [Results overview](#results-overview)
+- [Complete results gallery](docs/RESULTS_GALLERY.md)
 - [Methods](#methods)
 - [Methods-to-code reference](#methods-to-code-reference)
 - [Installation](#installation)
@@ -24,6 +28,17 @@ through a patient-conditioned graph-prior adapter.
 
 ## Framework
 
+<p align="center">
+  <img src="docs/assets/framework/naformer-framework.png" alt="NaInSIGHT study design, medication-effect graph, landmark prediction scheme and NaFormer architecture" width="100%">
+</p>
+
+<p align="center"><em>NaInSIGHT integrates perioperative event trajectories, a transferred medication-laboratory effect graph and the dual-scale NaFormer backbone for coherent 24 h and 48 h prediction.</em></p>
+
+The framework links four layers of the study: temporally separated development and validation cohorts;
+dose- and lag-resolved medication-effect estimation; leakage-aware landmark construction; and multi-task
+prediction through local state-space, global causal-attention and patient-conditioned graph-prior pathways.
+The full-resolution source is available as a [vector PDF](docs/assets/framework/NaFormer-framework.pdf).
+
 | Component | Description |
 |---|---|
 | Landmark design | Surgery-end baseline (windows (0, 24] and (0, 48] h) and rolling landmarks every 24 h with a 6-h actionable gap (windows (t + 6, t + 30] and (t + 6, t + 54] h). Laboratory results are time-stamped at reporting time. |
@@ -32,6 +47,83 @@ through a patient-conditioned graph-prior adapter.
 | NaFormer backbone | Selective state-space local branch with time-aware discretisation, causal Transformer global branch with elapsed-time attention bias, and causal multi-resolution interaction between the branches. |
 | Graph-prior adapter | Exposure-conditioned prior embeddings, mechanistic projection of expected state changes, sparse cross-attention from the landmark state to the graph and an adaptive knowledge gate. |
 | Multi-task output | Coherent heads for hyponatraemia risk, ordinal severity and sodium nadir at 24 h and 48 h. |
+
+## Results overview
+
+The evaluation follows the model's three linked outputs: dynamic hyponatraemia risk, future serum sodium
+nadir and ordinal severity. Results are reported separately for the Tiantan temporal test cohort and the
+Wuhan Union external cohort at 24 h and 48 h horizons. The panels below provide a compact view of the
+validation chain; the [complete results gallery](docs/RESULTS_GALLERY.md) contains all 73 figures, including
+the surgery-end baseline analyses, ROC and precision-recall curves, calibration, decision-curve analysis,
+agreement plots, ablations and interpretation panels.
+
+### Dynamic risk discrimination
+
+NaInSIGHT is compared with linear, tree-based, convolutional, recurrent, Transformer and state-space
+baselines under the same temporal and external evaluation settings. Patient-cluster bootstrap intervals
+preserve the dependence between repeated landmarks contributed by the same patient.
+
+<p align="center">
+  <img src="docs/assets/results/01_dynamic_risk/01_model_comparison/RISK_ALL_01_auroc_tiantan_internal_24h.png" alt="Dynamic risk AUROC in the Tiantan temporal test cohort at 24 hours" width="100%">
+</p>
+
+<p align="center"><em>Dynamic hyponatraemia risk discrimination in the Tiantan temporal test cohort at the 24 h horizon.</em></p>
+
+<p align="center">
+  <img src="docs/assets/results/01_dynamic_risk/01_model_comparison/RISK_ALL_05_auroc_wuhan_external_24h.png" alt="Dynamic risk AUROC in the Wuhan Union external cohort at 24 hours" width="100%">
+</p>
+
+<p align="center"><em>External evaluation of 24 h dynamic risk discrimination in the Wuhan Union cohort.</em></p>
+
+### Multi-task prediction
+
+The regression and ordinal heads extend the risk estimate into clinically interpretable forecasts of the
+future sodium nadir and severity category. Aggregate model comparisons are paired with observed-predicted
+agreement to show both relative performance and the scale of individual prediction error.
+
+<p align="center">
+  <img src="docs/assets/results/02_sodium_nadir/01_model_comparison/NADIR_ALL_03_wuhan_external_24h.png" alt="Serum sodium nadir model comparison in the Wuhan Union external cohort at 24 hours" width="100%">
+</p>
+
+<p align="center"><em>External comparison of future serum sodium nadir prediction at the 24 h horizon.</em></p>
+
+<p align="center">
+  <img src="docs/assets/results/02_sodium_nadir/02_agreement/NADIR_SCATTER_03_wuhan_external_24h.png" alt="Observed and predicted serum sodium nadir in the Wuhan Union external cohort at 24 hours" width="78%">
+</p>
+
+<p align="center"><em>Observed-predicted agreement for the future serum sodium nadir in external validation.</em></p>
+
+<p align="center">
+  <img src="docs/assets/results/03_severity_grade/01_model_comparison/SEVERITY_ALL_03_wuhan_external_24h.png" alt="Ordinal hyponatraemia severity comparison in the Wuhan Union external cohort at 24 hours" width="100%">
+</p>
+
+<p align="center"><em>External evaluation of ordinal hyponatraemia severity prediction at the 24 h horizon.</em></p>
+
+### Architecture and knowledge-prior analysis
+
+Ablation experiments isolate the contribution of the medication-effect prior, the selective state-space
+and causal Transformer branches, adaptive gating and cross-task consistency. The effect atlas and SHAP
+panels then connect model performance to the temporal, physiological and treatment-related signals used by
+the prediction system. These interpretation results describe learned associations rather than causal
+treatment effects.
+
+<p align="center">
+  <img src="docs/assets/results/04_ablation/ABLATION_01_dense_grouped_bars.png" alt="NaInSIGHT component ablation at the 24-hour horizon" width="100%">
+</p>
+
+<p align="center"><em>Multi-task ablation across internal temporal testing and external validation.</em></p>
+
+<p align="center">
+  <img src="docs/assets/results/05_explainability/GRAPH01_dose_time_effect_atlas.png" alt="Signed dose-time medication-indicator effect atlas" width="100%">
+</p>
+
+<p align="center"><em>Dose- and lag-resolved medication-indicator associations used to construct the transferred knowledge prior.</em></p>
+
+<p align="center">
+  <img src="docs/assets/results/05_explainability/SHAP02_beeswarm_distribution.png" alt="Feature direction and SHAP effect distribution for 24-hour dynamic risk" width="78%">
+</p>
+
+<p align="center"><em>Direction and distribution of global feature contributions for 24 h dynamic risk prediction.</em></p>
 
 ## Methods
 

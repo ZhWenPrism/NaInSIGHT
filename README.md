@@ -640,8 +640,7 @@ python scripts/smoke_test.py
 ```
 
 The unit tests cover dose conversion, outcome ascertainment, the equivalence of the chunked state-space scan
-with the sequential recurrence and the causality of the temporal backbone. `scripts/smoke_test.py` runs the
-complete modelling pipeline on synthetic data.
+with the sequential recurrence and the causality of the temporal backbone. 
 
 ## License
 

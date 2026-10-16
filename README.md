@@ -729,6 +729,7 @@ Generated artefacts are written to the work directory declared in `configs/local
 ## Tests
 
 ```bash
+pip install -r requirements-dev.txt
 python -m pytest tests
 python scripts/smoke_test.py
 ```

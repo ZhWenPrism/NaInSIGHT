@@ -1,5 +1,7 @@
 # NaInSIGHT
 
+[![CI](https://github.com/ZhWenPrism/NaInSIGHT/actions/workflows/ci.yml/badge.svg)](https://github.com/ZhWenPrism/NaInSIGHT/actions/workflows/ci.yml)
+
 **Knowledge-guided dynamic prediction of postoperative hyponatraemia after glioma resection**
 
 Developed in collaboration with **Beijing Tiantan Hospital**.

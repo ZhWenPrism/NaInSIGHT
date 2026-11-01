@@ -14,10 +14,11 @@ SEVERITY = ("normal", "mild", "moderate_severe")
 def binary_metrics(y: np.ndarray, p: np.ndarray) -> dict:
     m = np.isfinite(y) & np.isfinite(p)
     y, p = y[m].astype(int), p[m]
-    out = {"n": int(len(y)), "n_pos": int(y.sum())}
+    out = {"n": int(len(y)), "n_pos": int(y.sum()),
+           "Brier": brier_score_loss(y, p, pos_label=1) if len(y) else np.nan}
     if len(np.unique(y)) < 2:
-        return {**out, "AUROC": np.nan, "AUPRC": np.nan, "Brier": np.nan}
-    out.update(AUROC=roc_auc_score(y, p), AUPRC=average_precision_score(y, p), Brier=brier_score_loss(y, p))
+        return {**out, "AUROC": np.nan, "AUPRC": np.nan}
+    out.update(AUROC=roc_auc_score(y, p), AUPRC=average_precision_score(y, p))
     lp = np.log(np.clip(p, 1e-6, 1 - 1e-6) / (1 - np.clip(p, 1e-6, 1 - 1e-6)))
     X = np.c_[np.ones_like(lp), lp]
     beta = np.zeros(2)
@@ -35,7 +36,7 @@ def binary_metrics(y: np.ndarray, p: np.ndarray) -> dict:
 def regression_metrics(y: np.ndarray, mu: np.ndarray) -> dict:
     m = np.isfinite(y) & np.isfinite(mu)
     y, mu = y[m], mu[m]
-    if len(y) < 2:
+    if len(y) == 0:
         return {"n": int(len(y)), "MAE": np.nan, "RMSE": np.nan, "R2": np.nan, "bias": np.nan}
     err = mu - y
     ss_res, ss_tot = float((err ** 2).sum()), float(((y - y.mean()) ** 2).sum())
@@ -53,7 +54,7 @@ def ordinal_metrics(y: np.ndarray, P: np.ndarray, per_class: bool = False) -> di
     aucs = [roc_auc_score((y == c).astype(int), P[:, c]) for c in range(3) if 0 < (y == c).sum() < len(y)]
     with np.errstate(invalid="ignore", divide="ignore"):
         kappa = (cohen_kappa_score(y, pred, labels=[0, 1, 2], weights="quadratic")
-                 if len(np.unique(y)) > 1 and len(np.unique(pred)) > 1 else np.nan)
+                 if len(np.union1d(y, pred)) > 1 else np.nan)
     out.update(macro_AUROC=float(np.mean(aucs)) if aucs else np.nan,
                macro_F1=f1_score(y, pred, labels=[0, 1, 2], average="macro", zero_division=0),
                balanced_accuracy=balanced_accuracy_score(y, pred), weighted_kappa=kappa)

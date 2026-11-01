@@ -28,6 +28,8 @@ def source_files(spec: dict, root: str | Path | None = None) -> list[str]:
     if spec.get("exclude_pattern"):
         pat = re.compile(spec["exclude_pattern"])
         files = [f for f in files if not pat.search(os.path.basename(f))]
+    if not files:
+        raise FileNotFoundError("no source files matched the source specification")
     missing = [f for f in files if not os.path.exists(f)]
     if missing:
         raise FileNotFoundError(f"missing source files: {missing[:3]}")

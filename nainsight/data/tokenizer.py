@@ -203,7 +203,12 @@ class ClinicalEventTokenizer:
     # ------------------------------------------------------------------ encode one split
     def encode(self, stays: pd.DataFrame, events: dict, lmk: pd.DataFrame, static: np.ndarray,
                horizons: list[int]) -> dict:
-        stays = stays.sort_values("stay_id").reset_index(drop=True)
+        static = np.asarray(static)
+        if static.ndim != 2 or static.shape[0] != len(stays):
+            raise ValueError("static must be a matrix with one row per stay")
+        order = np.argsort(stays["stay_id"].values, kind="stable")
+        stays = stays.iloc[order].reset_index(drop=True)
+        static = static[order]
         ids = stays["stay_id"].values
         start_rel = (-stays.set_index("stay_id")["surgery_duration_h"]).astype(np.float32)
         lmk = lmk[lmk["stay_id"].isin(ids)].sort_values(["stay_id", "t_lmk"]).reset_index(drop=True)

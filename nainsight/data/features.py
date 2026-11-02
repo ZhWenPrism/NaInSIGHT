@@ -57,6 +57,8 @@ class StaticPreprocessor:
     columns: list = field(default_factory=list)
 
     def fit(self, df: pd.DataFrame) -> "StaticPreprocessor":
+        self.stats = {}
+        self.columns = []
         for col, kind in self.schema.items():
             s = df[col]
             if kind == "numeric":

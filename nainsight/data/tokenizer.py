@@ -132,6 +132,11 @@ class ClinicalEventTokenizer:
                 "route": m["route"].astype(str).values, "dose_level": dose_levels(m, self.dose_cuts),
                 "value": z, "value_mask": np.isfinite(logd).astype(np.int8),
                 "na_load": np.arcsinh(np.nan_to_num(m["na_mmol"].values.astype(np.float64)) / 50.0).astype(np.float32)}))
+        if not frames:
+            types = {"stay_id": "int64", "t": "float32", "concept": "object", "ingredient": "object",
+                     "modality": "object", "route": "object", "dose_level": "int8", "value": "float32",
+                     "value_mask": "int8", "na_load": "float32"}
+            return pd.DataFrame({name: pd.Series(dtype=dtype) for name, dtype in types.items()})
         return pd.concat(frames, ignore_index=True)
 
     def _encode_columns(self, tok: pd.DataFrame, start_rel: pd.Series) -> dict:
@@ -203,7 +208,12 @@ class ClinicalEventTokenizer:
     # ------------------------------------------------------------------ encode one split
     def encode(self, stays: pd.DataFrame, events: dict, lmk: pd.DataFrame, static: np.ndarray,
                horizons: list[int]) -> dict:
-        stays = stays.sort_values("stay_id").reset_index(drop=True)
+        static = np.asarray(static)
+        if static.ndim != 2 or static.shape[0] != len(stays):
+            raise ValueError("static must be a matrix with one row per stay")
+        order = np.argsort(stays["stay_id"].values, kind="stable")
+        stays = stays.iloc[order].reset_index(drop=True)
+        static = static[order]
         ids = stays["stay_id"].values
         start_rel = (-stays.set_index("stay_id")["surgery_duration_h"]).astype(np.float32)
         lmk = lmk[lmk["stay_id"].isin(ids)].sort_values(["stay_id", "t_lmk"]).reset_index(drop=True)

@@ -64,8 +64,12 @@ def apply_overrides(cfg: dict, overrides: Iterable[str]) -> dict:
         dotted, raw = item.split("=", 1)
         node = cfg
         keys = dotted.strip().split(".")
+        if any(not key.strip() or key != key.strip() for key in keys):
+            raise ValueError(f"override has an invalid key path: {item!r}")
         for key in keys[:-1]:
             node = node.setdefault(key, {})
+            if not isinstance(node, dict):
+                raise ValueError(f"override cannot traverse a non-mapping value: {item!r}")
         node[keys[-1]] = yaml.safe_load(raw)
     return cfg
 

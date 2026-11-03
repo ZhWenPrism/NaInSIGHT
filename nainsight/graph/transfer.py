@@ -51,9 +51,19 @@ def convert_units(eff: pd.DataFrame, factors: dict) -> pd.DataFrame:
 def interpolate_lags(values: np.ndarray, ref_lags: list, dev_lags: list) -> np.ndarray:
     """values[..., T_ref] -> [..., T_dev]; NaN cells are interpolated from finite neighbours."""
     ref = np.asarray(ref_lags, dtype=float)
+    if ref.ndim != 1 or not ref.size or not np.isfinite(ref).all() or (np.diff(ref) <= 0).any():
+        raise ValueError("ref_lags must be finite, non-empty and strictly increasing")
+    values = np.asarray(values, dtype=float)
+    if values.ndim < 1 or values.shape[-1] != ref.size:
+        raise ValueError("values must have one entry per ref_lags coordinate")
+    dev_lags = np.asarray(dev_lags, dtype=float)
+    if dev_lags.ndim != 1 or not np.isfinite(dev_lags).all():
+        raise ValueError("dev_lags must be a finite one-dimensional grid")
     out = np.full(values.shape[:-1] + (len(dev_lags),), np.nan)
+    if not out.size:
+        return out
     flat_in = values.reshape(-1, values.shape[-1])
-    flat_out = out.reshape(-1, len(dev_lags))
+    flat_out = out.reshape(flat_in.shape[0], len(dev_lags))
     for i, row in enumerate(flat_in):
         ok = np.isfinite(row)
         if ok.sum() == 0:

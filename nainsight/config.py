@@ -52,7 +52,12 @@ def deep_merge(base: dict, update: dict) -> dict:
 
 def read_yaml(path: str | Path) -> dict:
     with open(path, "r", encoding="utf-8") as fh:
-        return yaml.safe_load(fh) or {}
+        data = yaml.safe_load(fh)
+    if data is None:
+        return {}
+    if not isinstance(data, dict):
+        raise ValueError(f"configuration must contain a YAML mapping: {path}")
+    return data
 
 
 def apply_overrides(cfg: dict, overrides: Iterable[str]) -> dict:

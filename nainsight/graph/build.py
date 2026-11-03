@@ -71,7 +71,7 @@ def build_graph(pri: dict, meta: dict) -> dict:
                          np.nanmax(np.abs(spec)) / 10.0, np.tanh((fin.mean() if len(fin) else 0.0) / sd[s])]
             src.append(D + m); dst.append(D + s); attr.append(a); etype.append(2); label.append(-100)
     return {"x": x, "edge_index": np.asarray([src, dst], dtype=np.int64),
-            "edge_attr": np.asarray(attr, dtype=np.float32), "edge_type": np.asarray(etype, dtype=np.int64),
+            "edge_attr": np.asarray(attr, dtype=np.float32).reshape(-1, edge_dim), "edge_type": np.asarray(etype, dtype=np.int64),
             "sign_label": np.asarray(label, dtype=np.int64), "node_names": np.asarray(GRAPH_NODES),
             "n_drug": np.asarray(D), "reliability": node_reliability(zB, D, S)}
 

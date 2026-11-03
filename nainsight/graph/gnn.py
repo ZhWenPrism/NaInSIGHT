@@ -84,6 +84,8 @@ def pretrain_graph_prior(graph: dict, cfg: dict, seed: int, device: str = "cpu")
     lab = torch.tensor(graph["sign_label"], dtype=torch.long, device=dev)
     d_edge = ea.shape[1]
     fwd = torch.nonzero(et == 0).squeeze(-1)                       # drug -> state edges
+    if not len(fwd):
+        raise ValueError("graph prior pretraining requires at least one drug-to-state edge")
     # index of the reverse (state -> drug) edge of every forward edge
     pairs = {(int(u), int(v)): i for i, (u, v) in enumerate(graph["edge_index"].T)}
     rev = torch.tensor([pairs.get((int(graph["edge_index"][1, i]), int(graph["edge_index"][0, i])), -1)

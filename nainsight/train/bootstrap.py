@@ -1,6 +1,8 @@
 """Patient-cluster bootstrap: resample patients (all their landmarks together) with replacement."""
 from __future__ import annotations
 
+from numbers import Integral
+
 import numpy as np
 import pandas as pd
 
@@ -8,8 +10,14 @@ import pandas as pd
 def cluster_bootstrap(df: pd.DataFrame, cluster: str, fn, n_boot: int = 1000, ci: float = 0.95,
                       seed: int = 0) -> dict:
     """fn(frame) -> {key: {metric: value}}; returns {key: {metric: (point, lower, upper)}}."""
+    if isinstance(n_boot, bool) or not isinstance(n_boot, Integral) or n_boot < 0:
+        raise ValueError("n_boot must be a non-negative integer")
+    if not np.isfinite(ci) or not 0 < ci < 1:
+        raise ValueError("ci must lie between zero and one")
+    if df.empty or cluster not in df or df[cluster].isna().any():
+        raise ValueError("bootstrap requires non-empty rows with a cluster ID for every row")
     point = fn(df)
-    groups = list(df.groupby(cluster).indices.values())
+    groups = list(df.groupby(cluster, observed=True).indices.values())
     rng = np.random.default_rng(seed)
     draws: dict = {}
     for _ in range(n_boot):

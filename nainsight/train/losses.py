@@ -22,9 +22,23 @@ class MultiTaskLoss(nn.Module):
                  pos_weight: list[float] | None = None, consistency_weight: float = 0.1, threshold: float = 135.0):
         super().__init__()
         self.horizons, self.weighting, self.threshold = list(horizons), weighting, threshold
+        if weighting not in {"uncertainty", "fixed"}:
+            raise ValueError("weighting must be 'uncertainty' or 'fixed'")
+        if not self.horizons or self.horizons != sorted(set(self.horizons)):
+            raise ValueError("horizons must be non-empty and strictly increasing")
         self.fixed = fixed_weights or {"risk": 1.0, "severity": 1.0, "nadir": 0.5}
+        if weighting == "fixed" and (
+                set(self.fixed) != set(TASKS)
+                or any(not math.isfinite(w) or w < 0 for w in self.fixed.values())):
+            raise ValueError("fixed_weights must contain finite non-negative weights for every task")
+        if not math.isfinite(consistency_weight) or consistency_weight < 0 or not math.isfinite(threshold):
+            raise ValueError("consistency_weight must be non-negative and threshold must be finite")
         self.consistency_weight = consistency_weight
-        self.register_buffer("pos_weight", torch.tensor(pos_weight or [1.0] * len(horizons), dtype=torch.float32))
+        weights = torch.as_tensor([1.0] * len(self.horizons) if pos_weight is None else pos_weight,
+                                  dtype=torch.float32).clone()
+        if weights.shape != (len(self.horizons),) or not torch.isfinite(weights).all() or (weights < 0).any():
+            raise ValueError("pos_weight must contain one finite non-negative weight per horizon")
+        self.register_buffer("pos_weight", weights)
         self.log_vars = nn.Parameter(torch.zeros(len(TASKS))) if weighting == "uncertainty" else None
 
     def forward(self, out: dict, targets: dict) -> tuple[torch.Tensor, dict]:

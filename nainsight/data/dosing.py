@@ -163,7 +163,9 @@ def normalise_doses(df: pd.DataFrame, unit_aliases: dict | None = None, defaults
     out["unit_n"] = normalise_unit(out["unit"], unit_aliases)
     out["text_n"] = normalise_text(out["text"])
     keys = out[["ingredient", "unit_n", "text_n"]].drop_duplicates()
-    table = pd.DataFrame([conversion_row(i, u, t, defaults) for i, u, t in keys.itertuples(index=False)])
+    table = pd.DataFrame(
+        [conversion_row(i, u, t, defaults) for i, u, t in keys.itertuples(index=False)],
+        columns=["concept", "dose_unit", "factor", "na_per_ml", "tonicity", "pred_eq"])
     table.index = keys.index
     keys = pd.concat([keys, table], axis=1)
     out = out.merge(keys, on=["ingredient", "unit_n", "text_n"], how="left")

@@ -11,6 +11,7 @@ linear recurrence across chunk boundaries).
 from __future__ import annotations
 
 import math
+from numbers import Integral
 
 import torch
 import torch.nn as nn
@@ -32,7 +33,11 @@ def segsum(x: torch.Tensor) -> torch.Tensor:
 
 def ssd_scan(X: torch.Tensor, A: torch.Tensor, B: torch.Tensor, C: torch.Tensor, chunk: int) -> torch.Tensor:
     """X (b,l,h,p) discretised input, A (b,l,h) log-decay (<= 0), B/C (b,l,h,n) -> Y (b,l,h,p)."""
+    if isinstance(chunk, bool) or not isinstance(chunk, Integral) or chunk <= 0:
+        raise ValueError("chunk must be a positive integer")
     b, l, h, p = X.shape
+    if l == 0:
+        return X
     n = B.shape[-1]
     pad = (-l) % chunk
     if pad:
@@ -50,9 +55,13 @@ def ssd_scan(X: torch.Tensor, A: torch.Tensor, B: torch.Tensor, C: torch.Tensor,
     y_diag = torch.einsum("bclhn,bcshn,bhcls,bcshp->bclhp", C, B, L, X)
     decay_states = torch.exp(A_cum[..., -1:] - A_cum)                        # b h c l
     states = torch.einsum("bclhn,bhcl,bclhp->bchpn", B, decay_states, X)
-    states = torch.cat([torch.zeros_like(states[:, :1]), states], dim=1)
-    decay_chunk = torch.exp(segsum(F.pad(A_cum[..., -1], (1, 0))))           # b h (c+1) (c+1)
-    states = torch.einsum("bhzc,bchpn->bzhpn", decay_chunk, states)[:, :-1]
+    carry = torch.zeros_like(states[:, 0])
+    incoming = []
+    decay = torch.exp(A_cum[..., -1]).permute(0, 2, 1)
+    for index in range(c):
+        incoming.append(carry)
+        carry = decay[:, index, :, None, None] * carry + states[:, index]
+    states = torch.stack(incoming, dim=1)
     y_off = torch.einsum("bclhn,bchpn,bhcl->bclhp", C, states, torch.exp(A_cum))
     return (y_diag + y_off).reshape(b, c * chunk, h, p)[:, :l]
 

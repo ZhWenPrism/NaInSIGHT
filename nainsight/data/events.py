@@ -260,6 +260,15 @@ def _expand_orders(site: dict, med: dict, windows: pd.DataFrame, matcher: Ingred
     spec = med["orders"]
     subjects = set(windows["subject_key"])
     freq = {str(k): v for k, v in spec["frequency_hours"].items()}
+    for code, hours in freq.items():
+        if hours == "once":
+            continue
+        try:
+            interval = float(hours)
+        except (TypeError, ValueError):
+            raise ValueError(f"frequency {code!r} must be positive hours or 'once'") from None
+        if isinstance(hours, bool) or not np.isfinite(interval) or interval <= 0:
+            raise ValueError(f"frequency {code!r} must be positive hours or 'once'")
     skip_types = set(spec.get("exclude_order_types", []))
     horizon = windows.groupby("subject_key")["win_end"].max()
     parts = []

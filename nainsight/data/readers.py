@@ -11,6 +11,7 @@ from __future__ import annotations
 import glob
 import os
 import re
+from numbers import Integral
 from pathlib import Path
 from typing import Iterator, Sequence
 
@@ -41,6 +42,8 @@ def iter_source(spec: dict, fields: Sequence[str] | None = None, root: str | Pat
     """Yield chunks whose columns are the requested canonical ``fields`` (all mapped fields by default).
     Every value is read as string; typed parsing happens downstream so that malformed cells never abort
     a run."""
+    if isinstance(chunksize, bool) or not isinstance(chunksize, Integral) or chunksize <= 0:
+        raise ValueError("chunksize must be a positive integer")
     colmap: dict = dict(spec["columns"])
     fields = list(fields) if fields is not None else list(colmap)
     absent = [f for f in fields if f not in colmap]
@@ -68,7 +71,7 @@ def iter_source(spec: dict, fields: Sequence[str] | None = None, root: str | Pat
         elif fmt == "parquet":
             frame = pd.read_parquet(path, columns=unique_src)
             for start in range(0, len(frame), chunksize):
-                yield emit(frame.iloc[start:start + chunksize].astype(str))
+                yield emit(frame.iloc[start:start + chunksize].astype("string"))
         else:
             raise ValueError(f"unsupported format {fmt!r}")
 

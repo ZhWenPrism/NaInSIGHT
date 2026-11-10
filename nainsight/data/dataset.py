@@ -1,6 +1,7 @@
 """Stay-level dataset: one item = one admission (its full causal token sequence and all of its landmarks)."""
 from __future__ import annotations
 
+from numbers import Integral
 from pathlib import Path
 
 import numpy as np
@@ -83,7 +84,10 @@ class LengthBucketSampler(Sampler):
     """Batches of similar sequence length (less padding), reshuffled every epoch."""
 
     def __init__(self, lengths: np.ndarray, batch_size: int, shuffle: bool = True, seed: int = 0, mult: int = 50):
-        self.lengths, self.bs, self.shuffle, self.seed, self.mult, self.epoch = lengths, batch_size, shuffle, seed, mult, 0
+        for name, size in (("batch_size", batch_size), ("mult", mult)):
+            if isinstance(size, bool) or not isinstance(size, Integral) or size <= 0:
+                raise ValueError(f"{name} must be a positive integer")
+        self.lengths, self.bs, self.shuffle, self.seed, self.mult, self.epoch = lengths, int(batch_size), shuffle, seed, int(mult), 0
 
     def __iter__(self):
         rng = np.random.default_rng(self.seed + self.epoch)

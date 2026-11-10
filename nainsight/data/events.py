@@ -37,7 +37,8 @@ def stay_windows(stays: pd.DataFrame, lookback_days: float, max_postop_h: float)
 def attach(events: pd.DataFrame, windows: pd.DataFrame, time_col: str = "time") -> pd.DataFrame:
     """Link subject-level events to admissions by time window and express time relative to surgery end."""
     if events.empty:
-        return events.assign(stay_id=pd.Series(dtype=np.int64), t=pd.Series(dtype=np.float32))
+        return events.drop(columns=["subject_key", time_col], errors="ignore").assign(
+            stay_id=pd.Series(dtype=np.int64), t=pd.Series(dtype=np.float32))
     m = events.merge(windows, on="subject_key", how="inner")
     m = m[(m[time_col] >= m["win_start"]) & (m[time_col] <= m["win_end"])]
     m = m.assign(t=((m[time_col] - m["surgery_end"]).dt.total_seconds() / 3600.0).astype(np.float32))
@@ -158,7 +159,9 @@ def _extract_charted(site: dict, block: dict, windows: pd.DataFrame, bin_h: floa
             concept = _match_rules(item, None, rules)
             parts.append(pd.DataFrame({"subject_key": chunk["subject_key"].values, "time": to_datetime(chunk["time"]).values,
                                        "concept": concept.values, "value": to_numeric(chunk["value"]).values}))
-    df = pd.concat(parts, ignore_index=True).dropna(subset=["concept", "time", "value"])
+    df = (pd.concat(parts, ignore_index=True) if parts else
+          pd.DataFrame(columns=["subject_key", "time", "concept", "value"]))
+    df = df.dropna(subset=["concept", "time", "value"])
     df["concept"] = df["concept"].astype(str)
     df, dropped = _plausible(df, ranges)
     df = attach(df, windows)
@@ -189,6 +192,9 @@ def extract_io(site: dict, windows: pd.DataFrame, cfg: dict) -> tuple[pd.DataFra
 
 
 # ------------------------------------------------------------------------------------- medications
+MEDICATION_COLUMNS = ("subject_key", "time", "ingredient", "value", "unit", "text", "route_raw")
+
+
 class IngredientMatcher:
     """Ordered (first match wins) ingredient patterns plus a global exclusion pattern for non-systemic forms."""
 
@@ -246,7 +252,7 @@ def _administration_log(site: dict, med: dict, windows: pd.DataFrame, matcher: I
                                    "ingredient": chunk["ingredient"].astype(str).values,
                                    "value": chunk["value"].values, "unit": chunk["unit"].values,
                                    "text": chunk["text"].values, "route_raw": chunk["route"].values}))
-    return pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()
+    return pd.concat(parts, ignore_index=True) if parts else pd.DataFrame(columns=MEDICATION_COLUMNS)
 
 
 def _expand_orders(site: dict, med: dict, windows: pd.DataFrame, matcher: IngredientMatcher) -> pd.DataFrame:
@@ -254,6 +260,15 @@ def _expand_orders(site: dict, med: dict, windows: pd.DataFrame, matcher: Ingred
     spec = med["orders"]
     subjects = set(windows["subject_key"])
     freq = {str(k): v for k, v in spec["frequency_hours"].items()}
+    for code, hours in freq.items():
+        if hours == "once":
+            continue
+        try:
+            interval = float(hours)
+        except (TypeError, ValueError):
+            raise ValueError(f"frequency {code!r} must be positive hours or 'once'") from None
+        if isinstance(hours, bool) or not np.isfinite(interval) or interval <= 0:
+            raise ValueError(f"frequency {code!r} must be positive hours or 'once'")
     skip_types = set(spec.get("exclude_order_types", []))
     horizon = windows.groupby("subject_key")["win_end"].max()
     parts = []
@@ -280,7 +295,7 @@ def _expand_orders(site: dict, med: dict, windows: pd.DataFrame, matcher: Ingred
                                    "ingredient": rep["ingredient"].astype(str).values, "value": rep["value"].values,
                                    "unit": rep["unit"].values, "text": rep["text"].values,
                                    "route_raw": rep["route"].values}))
-    return pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()
+    return pd.concat(parts, ignore_index=True) if parts else pd.DataFrame(columns=MEDICATION_COLUMNS)
 
 
 def extract_medications(site: dict, windows: pd.DataFrame, cfg: dict) -> tuple[pd.DataFrame, dict]:

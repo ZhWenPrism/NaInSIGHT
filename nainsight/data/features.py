@@ -5,6 +5,7 @@ split only and then frozen; validation, temporal-test and external cohorts are t
 """
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -100,11 +101,11 @@ class StaticPreprocessor:
         return frame
 
     def state(self) -> dict:
-        return {"schema": self.schema, "min_count": self.min_count, "stats": self.stats, "columns": self.columns}
+        return deepcopy({"schema": self.schema, "min_count": self.min_count, "stats": self.stats, "columns": self.columns})
 
     @classmethod
     def from_state(cls, st: dict) -> "StaticPreprocessor":
-        return cls(schema=st["schema"], min_count=st["min_count"], stats=st["stats"], columns=st["columns"])
+        return cls(**deepcopy({key: st[key] for key in ("schema", "min_count", "stats", "columns")}))
 
 
 def robust_center_scale(values: pd.Series) -> tuple[float, float]:

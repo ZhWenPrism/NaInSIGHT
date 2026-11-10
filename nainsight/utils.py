@@ -6,6 +6,7 @@ import logging
 import os
 import random
 import sys
+import tempfile
 import time
 from contextlib import contextmanager
 from pathlib import Path
@@ -90,9 +91,18 @@ def _json_default(obj: Any):
 
 
 def save_json(obj: Any, path: str | Path) -> None:
-    ensure_dir(Path(path).parent)
-    with open(path, "w", encoding="utf-8") as fh:
-        json.dump(obj, fh, indent=2, ensure_ascii=False, default=_json_default)
+    path = Path(path).resolve()
+    ensure_dir(path.parent)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
+                                         prefix=f".{path.name}.", suffix=".tmp", delete=False) as fh:
+            temporary = Path(fh.name)
+            json.dump(obj, fh, indent=2, ensure_ascii=False, default=_json_default)
+        temporary.replace(path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
 def load_json(path: str | Path) -> Any:

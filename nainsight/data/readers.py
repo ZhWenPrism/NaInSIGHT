@@ -71,7 +71,7 @@ def iter_source(spec: dict, fields: Sequence[str] | None = None, root: str | Pat
         elif fmt == "parquet":
             frame = pd.read_parquet(path, columns=unique_src)
             for start in range(0, len(frame), chunksize):
-                yield emit(frame.iloc[start:start + chunksize].astype(str))
+                yield emit(frame.iloc[start:start + chunksize].astype("string"))
         else:
             raise ValueError(f"unsupported format {fmt!r}")
 

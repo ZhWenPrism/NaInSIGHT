@@ -15,7 +15,51 @@ LONG_FIELDS = {"concept", "ingredient", "modality", "route", "phase", "dose_leve
 
 def load_pack(path: str | Path) -> dict:
     with np.load(path, allow_pickle=False) as z:
-        return {k: z[k] for k in z.files}
+        pack = {k: z[k] for k in z.files}
+    validate_pack(pack)
+    return pack
+
+
+def validate_pack(pack: dict) -> None:
+    """Validate the stay boundaries and landmark positions before batching."""
+    def array(name):
+        if name not in pack:
+            raise ValueError(f"pack is missing {name}")
+        return np.asarray(pack[name])
+
+    stays = array("stay_id")
+    if stays.ndim != 1:
+        raise ValueError("stay_id must be one-dimensional")
+
+    def offsets(name, total):
+        values = array(name)
+        if (values.ndim != 1 or values.size != stays.size + 1
+                or values.dtype.kind not in "iu" or values[0] != 0
+                or values[-1] != total or (values[1:] < values[:-1]).any()):
+            raise ValueError(f"{name} must partition all rows in stay order")
+        return values.astype(np.int64)
+
+    token_time = array("tok_time")
+    if token_time.ndim != 1:
+        raise ValueError("tok_time must be one-dimensional")
+    tok = offsets("tok_offsets", token_time.size)
+    for field in TOKEN_FIELDS:
+        name = f"tok_{field}"
+        if array(name).shape != token_time.shape:
+            raise ValueError(f"{name} must align with tok_time")
+    positions = array("lmk_pos")
+    if positions.ndim != 1 or positions.dtype.kind not in "iu":
+        raise ValueError("lmk_pos must be a one-dimensional integer vector")
+    lmk = offsets("lmk_offsets", positions.size)
+    lengths = np.repeat(np.diff(tok), np.diff(lmk))
+    if ((positions < 0) | (positions >= lengths)).any():
+        raise ValueError("lmk_pos must index a token within its stay")
+    for name in ("lmk_time", "lmk_mode", "lmk_na_last", "lmk_na_mask", "node_feat",
+                 *(key for key in pack if key.startswith("y_"))):
+        values = array(name)
+        if values.ndim < 1 or values.shape[0] != positions.size:
+            raise ValueError(f"{name} must align with lmk_pos")
+
 
 
 def target_keys(pack: dict) -> list[str]:

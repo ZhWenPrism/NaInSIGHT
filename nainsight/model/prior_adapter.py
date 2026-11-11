@@ -17,6 +17,7 @@ factor (initialised at 1) is learned.
 from __future__ import annotations
 
 import math
+from numbers import Integral
 
 import torch
 import torch.nn as nn
@@ -47,6 +48,11 @@ class PatientConditionedGraphPriorAdapter(nn.Module):
                  node_feat_dim: int, n_heads: int, top_k: int | None, gate_bias: float, trainable: bool,
                  dropout: float, mechanistic: MechanisticProjector | None, use_gate: bool = True):
         super().__init__()
+        if (isinstance(n_heads, bool) or not isinstance(n_heads, Integral)
+                or n_heads <= 0 or d % n_heads):
+            raise ValueError("n_heads must be a positive integer dividing d")
+        if top_k is not None and (isinstance(top_k, bool) or not isinstance(top_k, Integral) or top_k <= 0):
+            raise ValueError("top_k must be a positive integer or None")
         n_nodes, d_prior = prior_vectors.shape
         self.prior = nn.Parameter(prior_vectors.float().clone(), requires_grad=trainable)
         self.register_buffer("node_type", node_type.long())

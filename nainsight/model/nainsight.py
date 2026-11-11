@@ -30,12 +30,13 @@ class PriorPack:
     @classmethod
     def load(cls, graph_dir: str | Path, vectors_file: str = "prior_vectors.npz", key: str = "vectors") -> "PriorPack":
         graph_dir = Path(graph_dir)
-        g = np.load(graph_dir / "graph.npz", allow_pickle=False)
-        pm = np.load(graph_dir / "prior_matrices.npz", allow_pickle=False)
-        vec = np.load(graph_dir / vectors_file, allow_pickle=False)[key]
-        n_drug = int(g["n_drug"])
-        node_type = np.r_[np.zeros(n_drug), np.ones(len(g["node_names"]) - n_drug)].astype(np.int64)
-        return cls(vec, node_type, g["reliability"], pm["B_dev"], pm["A_dev"], pm["dev_lags"])
+        with (np.load(graph_dir / "graph.npz", allow_pickle=False) as g,
+              np.load(graph_dir / "prior_matrices.npz", allow_pickle=False) as pm,
+              np.load(graph_dir / vectors_file, allow_pickle=False) as vectors):
+            vec = vectors[key]
+            n_drug = int(g["n_drug"])
+            node_type = np.r_[np.zeros(n_drug), np.ones(len(g["node_names"]) - n_drug)].astype(np.int64)
+            return cls(vec, node_type, g["reliability"], pm["B_dev"], pm["A_dev"], pm["dev_lags"])
 
 
 class NaInSIGHT(nn.Module):

@@ -55,8 +55,14 @@ def regression_metrics(y: np.ndarray, mu: np.ndarray) -> dict:
 
 
 def ordinal_metrics(y: np.ndarray, P: np.ndarray, per_class: bool = False) -> dict:
+    y, P = np.asarray(y), np.asarray(P)
+    if y.ndim != 1 or P.shape != (y.size, len(SEVERITY)):
+        raise ValueError("severity scores must have one row per label and three columns")
     m = np.isfinite(y) & np.isfinite(P).all(axis=1)
-    y, P = y[m].astype(int), P[m]
+    y, P = y[m], P[m]
+    if not np.isin(y, (0, 1, 2)).all():
+        raise ValueError("severity labels must be 0, 1 or 2")
+    y = y.astype(int)
     out = {"n": int(len(y))}
     if len(y) == 0:
         return out

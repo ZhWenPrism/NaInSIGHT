@@ -5,6 +5,7 @@ import warnings
 
 import numpy as np
 import pandas as pd
+from scipy.special import expit
 from sklearn.metrics import (average_precision_score, balanced_accuracy_score, brier_score_loss, cohen_kappa_score,
                              f1_score, precision_recall_fscore_support, roc_auc_score)
 
@@ -12,8 +13,14 @@ SEVERITY = ("normal", "mild", "moderate_severe")
 
 
 def binary_metrics(y: np.ndarray, p: np.ndarray) -> dict:
+    y, p = np.asarray(y), np.asarray(p)
+    if y.ndim != 1 or y.shape != p.shape:
+        raise ValueError("binary labels and probabilities must be aligned 1D arrays")
     m = np.isfinite(y) & np.isfinite(p)
-    y, p = y[m].astype(int), p[m]
+    y, p = y[m], p[m]
+    if not np.isin(y, (0, 1)).all():
+        raise ValueError("binary labels must be 0 or 1")
+    y = y.astype(int)
     out = {"n": int(len(y)), "n_pos": int(y.sum()),
            "Brier": brier_score_loss(y, p, pos_label=1) if len(y) else np.nan}
     if len(np.unique(y)) < 2:
@@ -23,7 +30,7 @@ def binary_metrics(y: np.ndarray, p: np.ndarray) -> dict:
     X = np.c_[np.ones_like(lp), lp]
     beta = np.zeros(2)
     for _ in range(50):                                            # logistic recalibration (Newton)
-        mu = 1 / (1 + np.exp(-(X @ beta)))
+        mu = expit(X @ beta)
         W = mu * (1 - mu) + 1e-9
         step = np.linalg.solve(X.T @ (X * W[:, None]) + 1e-8 * np.eye(2), X.T @ (y - mu))
         beta += step
@@ -34,6 +41,9 @@ def binary_metrics(y: np.ndarray, p: np.ndarray) -> dict:
 
 
 def regression_metrics(y: np.ndarray, mu: np.ndarray) -> dict:
+    y, mu = np.asarray(y, dtype=float), np.asarray(mu, dtype=float)
+    if y.ndim != 1 or y.shape != mu.shape:
+        raise ValueError("regression targets and predictions must be aligned 1D arrays")
     m = np.isfinite(y) & np.isfinite(mu)
     y, mu = y[m], mu[m]
     if len(y) == 0:
@@ -45,8 +55,14 @@ def regression_metrics(y: np.ndarray, mu: np.ndarray) -> dict:
 
 
 def ordinal_metrics(y: np.ndarray, P: np.ndarray, per_class: bool = False) -> dict:
+    y, P = np.asarray(y), np.asarray(P)
+    if y.ndim != 1 or P.shape != (y.size, len(SEVERITY)):
+        raise ValueError("severity scores must have one row per label and three columns")
     m = np.isfinite(y) & np.isfinite(P).all(axis=1)
-    y, P = y[m].astype(int), P[m]
+    y, P = y[m], P[m]
+    if not np.isin(y, (0, 1, 2)).all():
+        raise ValueError("severity labels must be 0, 1 or 2")
+    y = y.astype(int)
     out = {"n": int(len(y))}
     if len(y) == 0:
         return out

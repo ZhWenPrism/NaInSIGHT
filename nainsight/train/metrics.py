@@ -41,6 +41,9 @@ def binary_metrics(y: np.ndarray, p: np.ndarray) -> dict:
 
 
 def regression_metrics(y: np.ndarray, mu: np.ndarray) -> dict:
+    y, mu = np.asarray(y, dtype=float), np.asarray(mu, dtype=float)
+    if y.ndim != 1 or y.shape != mu.shape:
+        raise ValueError("regression targets and predictions must be aligned 1D arrays")
     m = np.isfinite(y) & np.isfinite(mu)
     y, mu = y[m], mu[m]
     if len(y) == 0:

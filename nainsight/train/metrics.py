@@ -5,6 +5,7 @@ import warnings
 
 import numpy as np
 import pandas as pd
+from scipy.special import expit
 from sklearn.metrics import (average_precision_score, balanced_accuracy_score, brier_score_loss, cohen_kappa_score,
                              f1_score, precision_recall_fscore_support, roc_auc_score)
 
@@ -23,7 +24,7 @@ def binary_metrics(y: np.ndarray, p: np.ndarray) -> dict:
     X = np.c_[np.ones_like(lp), lp]
     beta = np.zeros(2)
     for _ in range(50):                                            # logistic recalibration (Newton)
-        mu = 1 / (1 + np.exp(-(X @ beta)))
+        mu = expit(X @ beta)
         W = mu * (1 - mu) + 1e-9
         step = np.linalg.solve(X.T @ (X * W[:, None]) + 1e-8 * np.eye(2), X.T @ (y - mu))
         beta += step

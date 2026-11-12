@@ -13,8 +13,14 @@ SEVERITY = ("normal", "mild", "moderate_severe")
 
 
 def binary_metrics(y: np.ndarray, p: np.ndarray) -> dict:
+    y, p = np.asarray(y), np.asarray(p)
+    if y.ndim != 1 or y.shape != p.shape:
+        raise ValueError("binary labels and probabilities must be aligned 1D arrays")
     m = np.isfinite(y) & np.isfinite(p)
-    y, p = y[m].astype(int), p[m]
+    y, p = y[m], p[m]
+    if not np.isin(y, (0, 1)).all():
+        raise ValueError("binary labels must be 0 or 1")
+    y = y.astype(int)
     out = {"n": int(len(y)), "n_pos": int(y.sum()),
            "Brier": brier_score_loss(y, p, pos_label=1) if len(y) else np.nan}
     if len(np.unique(y)) < 2:

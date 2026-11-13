@@ -30,6 +30,11 @@ def validate_pack(pack: dict) -> None:
     stays = array("stay_id")
     if stays.ndim != 1:
         raise ValueError("stay_id must be one-dimensional")
+    if array("subject_id").shape != stays.shape:
+        raise ValueError("subject_id must have one entry per stay")
+    static = array("static")
+    if static.ndim != 2 or static.shape[0] != stays.size:
+        raise ValueError("static must be a matrix with one row per stay")
 
     def offsets(name, total):
         values = array(name)

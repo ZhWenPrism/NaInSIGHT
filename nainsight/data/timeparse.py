@@ -20,7 +20,8 @@ def combine_date_time(date: pd.Series, time: pd.Series, default_time: str = "12:
     """Combine separate date and clock-time columns; a missing clock time falls back to ``default_time``."""
     d = _normalise(date)
     t = time.astype("string").str.normalize("NFKC").str.strip()
-    t = t.where(t.str.match(r"^\d{1,2}:\d{1,2}").fillna(False), default_time)
+    missing = t.isna() | t.str.lower().isin(("", "nan", "nat", "none"))
+    t = t.where(t.str.match(r"^\d{1,2}:\d{1,2}").fillna(False)).mask(missing, default_time)
     return pd.to_datetime(d + " " + t, errors="coerce", format="mixed")
 
 

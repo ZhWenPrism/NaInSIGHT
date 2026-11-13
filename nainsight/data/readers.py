@@ -4,6 +4,7 @@ canonical field names, so the same extraction code serves every site:
     path | path_glob : file or glob (relative to the adapter's ``root``)
     exclude_pattern  : regular expression on file names to skip
     format           : csv | csv_headerless | xlsx | parquet
+    sheet_name       : worksheet name or zero-based index for xlsx (default: first sheet)
     columns          : {canonical_field: source column name (or 0-based index for headerless csv)}
 """
 from __future__ import annotations
@@ -65,7 +66,10 @@ def iter_source(spec: dict, fields: Sequence[str] | None = None, root: str | Pat
             for chunk in reader:
                 yield emit(chunk)
         elif fmt == "xlsx":
-            frame = pd.read_excel(path, usecols=unique_src, dtype=str)
+            sheet = spec.get("sheet_name", 0)
+            if not isinstance(sheet, str) and (isinstance(sheet, bool) or not isinstance(sheet, Integral) or sheet < 0):
+                raise ValueError("sheet_name must be a worksheet name or a non-negative integer index")
+            frame = pd.read_excel(path, sheet_name=sheet, usecols=unique_src, dtype=str)
             for start in range(0, len(frame), chunksize):
                 yield emit(frame.iloc[start:start + chunksize])
         elif fmt == "parquet":

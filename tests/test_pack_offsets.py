@@ -7,6 +7,8 @@ from nainsight.data.dataset import TOKEN_FIELDS, load_pack
 def pack_data():
     return {
         "stay_id": np.array([11, 21]),
+        "subject_id": np.array([1, 2]),
+        "static": np.zeros((2, 1)),
         "tok_offsets": np.array([0, 2, 5]),
         "lmk_offsets": np.array([0, 1, 2]),
         **{f"tok_{field}": np.zeros(5) for field in TOKEN_FIELDS},
@@ -30,6 +32,10 @@ def pack_data():
     ("lmk_pos", [2, 2]),
     ("lmk_pos", [-1, 2]),
     ("tok_time", [0., 1., 2., 3.]),
+    ("subject_id", [1]),
+    ("subject_id", [[1], [2]]),
+    ("static", [[1.0]]),
+    ("static", [1.0, 2.0]),
 ])
 def test_load_pack_rejects_misaligned_stay_slices(tmp_path, field, values):
     pack = pack_data()

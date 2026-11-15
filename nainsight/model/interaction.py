@@ -30,13 +30,15 @@ class CausalBinCrossAttention(nn.Module):
         bins = torch.floor((t - origin) / self.r).long().clamp(0, self.max_bins - 1).masked_fill(~valid, 0)
         nb = int(bins.max().item()) + 1
         w = valid.to(xs.dtype)
+        source = xs.masked_fill(~valid.unsqueeze(-1), 0.0)
         summ = torch.zeros(b, nb, d, device=xs.device, dtype=xs.dtype).scatter_add_(
-            1, bins.unsqueeze(-1).expand(-1, -1, d), xs * w.unsqueeze(-1))
+            1, bins.unsqueeze(-1).expand(-1, -1, d), source)
         cnt = torch.zeros(b, nb, device=xs.device, dtype=xs.dtype).scatter_add_(1, bins, w)
         summary = summ / cnt.clamp(min=1.0).unsqueeze(-1)
         allowed = (torch.arange(nb, device=xs.device).view(1, 1, nb) < bins.unsqueeze(-1)) & (cnt > 0).unsqueeze(1)
         has = allowed.any(dim=-1)                                                        # b l
-        q = self.q(self.nq(xq)).view(b, l, self.h, self.dh).transpose(1, 2)              # b h l dh
+        query = xq.masked_fill(~valid.unsqueeze(-1), 0.0)
+        q = self.q(self.nq(query)).view(b, l, self.h, self.dh).transpose(1, 2)              # b h l dh
         k, v = self.kv(self.nk(summary)).view(b, nb, 2, self.h, self.dh).permute(2, 0, 3, 1, 4)
         logits = (q @ k.transpose(-1, -2)) / math.sqrt(self.dh)                           # b h l nb
         logits = logits.masked_fill(~allowed.unsqueeze(1), float("-inf"))

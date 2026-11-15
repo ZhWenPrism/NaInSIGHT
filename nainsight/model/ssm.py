@@ -38,6 +38,7 @@ def ssd_scan(X: torch.Tensor, A: torch.Tensor, B: torch.Tensor, C: torch.Tensor,
     b, l, h, p = X.shape
     if l == 0:
         return X
+    chunk = min(chunk, l)
     n = B.shape[-1]
     pad = (-l) % chunk
     if pad:

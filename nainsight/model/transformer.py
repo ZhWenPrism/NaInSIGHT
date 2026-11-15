@@ -9,8 +9,12 @@ import torch.nn.functional as F
 class TimeBucketBias(nn.Module):
     def __init__(self, n_heads: int, boundaries_h: list[float]):
         super().__init__()
-        self.register_buffer("bounds", torch.tensor(boundaries_h, dtype=torch.float32), persistent=False)
-        self.bias = nn.Embedding(len(boundaries_h) + 1, n_heads)
+        bounds = torch.as_tensor(boundaries_h, dtype=torch.float32).clone()
+        if (bounds.ndim != 1 or not torch.isfinite(bounds).all()
+                or (bounds < 0).any() or (bounds[1:] <= bounds[:-1]).any()):
+            raise ValueError("elapsed-time bucket boundaries must be finite, non-negative and strictly increasing")
+        self.register_buffer("bounds", bounds, persistent=False)
+        self.bias = nn.Embedding(bounds.numel() + 1, n_heads)
         nn.init.zeros_(self.bias.weight)
 
     def forward(self, t: torch.Tensor) -> torch.Tensor:

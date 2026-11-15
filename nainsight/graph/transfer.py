@@ -20,7 +20,8 @@ KEY = ["src_type", "src", "level", "dst", "lag_h"]
 
 def shrink_subpopulation(eff_all: pd.DataFrame, eff_sub: pd.DataFrame) -> pd.DataFrame:
     m = eff_all[KEY + ["beta", "se", "n_exposed"]].merge(
-        eff_sub[KEY + ["beta", "se", "n_exposed"]], on=KEY, how="left", suffixes=("_all", "_sub"))
+        eff_sub[KEY + ["beta", "se", "n_exposed"]], on=KEY, how="left",
+        suffixes=("_all", "_sub"), validate="one_to_one")
     m["tau2"] = 0.0
     both = np.isfinite(m["beta_all"]) & np.isfinite(m["beta_sub"]) & np.isfinite(m["se_all"]) & np.isfinite(m["se_sub"])
     for (stype, dst, lag), idx in m.groupby(["src_type", "dst", "lag_h"]).groups.items():
@@ -73,6 +74,8 @@ def interpolate_lags(values: np.ndarray, ref_lags: list, dev_lags: list) -> np.n
 
 
 def prior_matrices(eff: pd.DataFrame, cfg: dict) -> dict:
+    if eff.duplicated(KEY).any():
+        raise ValueError("effect rows must be unique by source type, source, level, destination and lag")
     g = cfg["graph"]
     K = int(g["dose_levels"])
     ref_lags = [int(x) for x in g["lags_h"]]

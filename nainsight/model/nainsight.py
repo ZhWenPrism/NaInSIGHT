@@ -33,10 +33,20 @@ class PriorPack:
         with (np.load(graph_dir / "graph.npz", allow_pickle=False) as g,
               np.load(graph_dir / "prior_matrices.npz", allow_pickle=False) as pm,
               np.load(graph_dir / vectors_file, allow_pickle=False) as vectors):
-            vec = vectors[key]
-            n_drug = int(g["n_drug"])
-            node_type = np.r_[np.zeros(n_drug), np.ones(len(g["node_names"]) - n_drug)].astype(np.int64)
-            return cls(vec, node_type, g["reliability"], pm["B_dev"], pm["A_dev"], pm["dev_lags"])
+            vec, names, reliability = vectors[key], g["node_names"], g["reliability"]
+            drug_count = g["n_drug"]
+            if drug_count.shape != () or drug_count.dtype.kind not in "iu" or not 0 <= int(drug_count) <= names.size:
+                raise ValueError("n_drug must be a scalar integer within the graph node count")
+            if names.ndim != 1 or vec.ndim != 2 or vec.shape[0] != names.size or reliability.shape != names.shape:
+                raise ValueError("prior vectors and reliability must align with graph nodes")
+            n_drug = int(drug_count)
+            n_state = names.size - n_drug
+            B, A, lags = pm["B_dev"], pm["A_dev"], pm["dev_lags"]
+            if (lags.ndim != 1 or not lags.size or B.ndim != 4 or B.shape[0] != n_drug
+                    or B.shape[2:] != (lags.size, n_state) or A.shape != (lags.size, n_state, n_state)):
+                raise ValueError("prior effect arrays must align with graph nodes and development lags")
+            node_type = np.r_[np.zeros(n_drug), np.ones(n_state)].astype(np.int64)
+            return cls(vec, node_type, reliability, B, A, lags)
 
 
 class NaInSIGHT(nn.Module):

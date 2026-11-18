@@ -74,6 +74,8 @@ class MultiTaskLoss(nn.Module):
 
 
 def positive_weights(pack: dict, horizons: list[int], mode: str) -> list[float]:
+    if mode not in {"none", "balanced", "balanced_sqrt"}:
+        raise ValueError("positive class weighting must be none, balanced, or balanced_sqrt")
     out = []
     for h in horizons:
         y = pack[f"y_risk_{h}"]

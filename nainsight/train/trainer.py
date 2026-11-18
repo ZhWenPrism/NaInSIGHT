@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import math
 import time
+from numbers import Integral
 from pathlib import Path
 
 import numpy as np
@@ -53,6 +54,12 @@ class Trainer:
         self.model, self.loss_fn, self.cfg = model.to(device), loss_fn.to(device), cfg
         self.device, self.run_dir, self.log, self.horizons = device, Path(run_dir), logger, horizons
         tc = cfg["train"]
+        for name in ("epochs", "patience", "max_steps_per_epoch"):
+            value = tc.get(name)
+            if name == "max_steps_per_epoch" and value is None:
+                continue
+            if isinstance(value, (bool, np.bool_)) or not isinstance(value, Integral) or value < 1:
+                raise ValueError(f"{name} must be a positive integer")
         self.opt = torch.optim.AdamW(_param_groups([self.model, self.loss_fn], tc["weight_decay"]), lr=tc["lr"])
         self.grad_clip = tc["grad_clip"]
         self.max_steps = tc.get("max_steps_per_epoch")
@@ -117,6 +124,8 @@ class Trainer:
 
     def fit(self, train_loader, val_loader, val_pack: dict) -> dict:
         tc = self.cfg["train"]
+        if len(train_loader) == 0 or len(val_loader) == 0:
+            raise ValueError("training and validation loaders must each contain at least one batch")
         steps = len(train_loader) if not self.max_steps else min(len(train_loader), self.max_steps)
         sched = self._scheduler(steps)
         best, best_epoch, wait = -np.inf, -1, 0

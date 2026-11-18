@@ -124,6 +124,8 @@ class Trainer:
 
     def fit(self, train_loader, val_loader, val_pack: dict) -> dict:
         tc = self.cfg["train"]
+        if len(train_loader) == 0 or len(val_loader) == 0:
+            raise ValueError("training and validation loaders must each contain at least one batch")
         steps = len(train_loader) if not self.max_steps else min(len(train_loader), self.max_steps)
         sched = self._scheduler(steps)
         best, best_epoch, wait = -np.inf, -1, 0

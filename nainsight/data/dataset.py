@@ -50,8 +50,13 @@ def validate_pack(pack: dict) -> None:
     tok = offsets("tok_offsets", token_time.size)
     for field in TOKEN_FIELDS:
         name = f"tok_{field}"
-        if array(name).shape != token_time.shape:
+        values = array(name)
+        if values.shape != token_time.shape:
             raise ValueError(f"{name} must align with tok_time")
+        if field in LONG_FIELDS and (values.dtype.kind not in "iuf"
+                or not np.isfinite(values).all() or (values < 0).any()
+                or (values >= 2 ** 63).any() or (values != np.floor(values)).any()):
+            raise ValueError(f"{name} must contain non-negative integer codes below 2**63")
     positions = array("lmk_pos")
     if positions.ndim != 1 or positions.dtype.kind not in "iu":
         raise ValueError("lmk_pos must be a one-dimensional integer vector")

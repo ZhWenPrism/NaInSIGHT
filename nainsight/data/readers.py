@@ -62,14 +62,15 @@ def iter_source(spec: dict, fields: Sequence[str] | None = None, root: str | Pat
         if fmt in ("csv", "csv_headerless"):
             reader = pd.read_csv(path, header=None if fmt == "csv_headerless" else "infer",
                                  usecols=unique_src, dtype=str, encoding=encoding, chunksize=chunksize,
-                                 low_memory=False, on_bad_lines="skip")
+                                 low_memory=False, on_bad_lines="skip", keep_default_na=False, na_values=[""])
             for chunk in reader:
                 yield emit(chunk)
         elif fmt == "xlsx":
             sheet = spec.get("sheet_name", 0)
             if not isinstance(sheet, str) and (isinstance(sheet, bool) or not isinstance(sheet, Integral) or sheet < 0):
                 raise ValueError("sheet_name must be a worksheet name or a non-negative integer index")
-            frame = pd.read_excel(path, sheet_name=sheet, usecols=unique_src, dtype=str)
+            frame = pd.read_excel(path, sheet_name=sheet, usecols=unique_src, dtype=str,
+                                  keep_default_na=False, na_values=[""])
             for start in range(0, len(frame), chunksize):
                 yield emit(frame.iloc[start:start + chunksize])
         elif fmt == "parquet":

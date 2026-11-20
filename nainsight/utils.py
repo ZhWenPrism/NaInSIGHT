@@ -52,6 +52,9 @@ def resolve_device(preference: str = "auto"):
 
 def get_logger(name: str, log_file: str | Path | None = None) -> logging.Logger:
     """Stage logger; library modules (``nainsight.*``) log through the same handlers."""
+    existing = logging.getLogger(name)
+    if existing.handlers:
+        return existing
     fmt = logging.Formatter("%(asctime)s | %(name)s | %(levelname)s | %(message)s", "%Y-%m-%d %H:%M:%S")
     handlers = [logging.StreamHandler(sys.stdout)]
     if log_file is not None:

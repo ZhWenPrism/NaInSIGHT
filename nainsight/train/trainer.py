@@ -16,6 +16,7 @@ from torch.utils.data import DataLoader
 
 from ..data.dataset import Collator, LengthBucketSampler, StayDataset
 from ..model.heads import CoherentMultiTaskHead
+from ..utils import save_checkpoint
 from .metrics import landmark_metrics, validation_score
 
 
@@ -152,7 +153,7 @@ class Trainer:
             self.log.info("epoch %d | loss %.4f | val score %.4f | %.0fs", epoch, tr.get("total", np.nan), score, rec["seconds"])
             if np.isfinite(score) and score > best:
                 best, best_epoch, wait = score, epoch, 0
-                torch.save({"model": self.model.state_dict(), "loss": self.loss_fn.state_dict(), "epoch": epoch,
+                save_checkpoint({"model": self.model.state_dict(), "loss": self.loss_fn.state_dict(), "epoch": epoch,
                             "val_score": score}, self.run_dir / "best.pt")
             else:
                 wait += 1
@@ -160,6 +161,6 @@ class Trainer:
                     self.log.info("early stopping at epoch %d (best %d)", epoch, best_epoch)
                     break
         if best_epoch < 0:                                           # no finite validation score: keep last
-            torch.save({"model": self.model.state_dict(), "loss": self.loss_fn.state_dict(), "epoch": epoch,
+            save_checkpoint({"model": self.model.state_dict(), "loss": self.loss_fn.state_dict(), "epoch": epoch,
                         "val_score": float("nan")}, self.run_dir / "best.pt")
         return {"best_val_score": best, "best_epoch": best_epoch}

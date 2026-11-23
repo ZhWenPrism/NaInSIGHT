@@ -27,6 +27,10 @@ def validate_pack(pack: dict) -> None:
             raise ValueError(f"pack is missing {name}")
         return np.asarray(pack[name])
 
+    def finite(name, values):
+        if values.dtype.kind not in "biuf" or not np.isfinite(values).all():
+            raise ValueError(f"{name} must contain finite numeric values")
+
     stays = array("stay_id")
     if stays.ndim != 1:
         raise ValueError("stay_id must be one-dimensional")
@@ -35,6 +39,7 @@ def validate_pack(pack: dict) -> None:
     static = array("static")
     if static.ndim != 2 or static.shape[0] != stays.size:
         raise ValueError("static must be a matrix with one row per stay")
+    finite("static", static)
 
     def offsets(name, total):
         values = array(name)
@@ -57,6 +62,8 @@ def validate_pack(pack: dict) -> None:
                 or not np.isfinite(values).all() or (values < 0).any()
                 or (values >= 2 ** 63).any() or (values != np.floor(values)).any()):
             raise ValueError(f"{name} must contain non-negative integer codes below 2**63")
+        if field not in LONG_FIELDS:
+            finite(name, values)
     positions = array("lmk_pos")
     if positions.ndim != 1 or positions.dtype.kind not in "iu":
         raise ValueError("lmk_pos must be a one-dimensional integer vector")
@@ -74,6 +81,8 @@ def validate_pack(pack: dict) -> None:
         values = array(name)
         if values.ndim < 1 or values.shape[0] != positions.size:
             raise ValueError(f"{name} must align with lmk_pos")
+        if not name.startswith("y_"):
+            finite(name, values)
 
 
 

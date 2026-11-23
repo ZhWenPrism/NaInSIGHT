@@ -60,6 +60,14 @@ class Trainer:
                 continue
             if isinstance(value, (bool, np.bool_)) or not isinstance(value, Integral) or value < 1:
                 raise ValueError(f"{name} must be a positive integer")
+        for name in ("lr", "weight_decay", "grad_clip", "warmup_frac"):
+            if name == "warmup_frac" and name not in tc:
+                continue
+            value = tc[name]
+            if (isinstance(value, (bool, np.bool_)) or not math.isfinite(value)
+                    or value < 0 or (name in ("lr", "grad_clip") and value == 0)
+                    or (name == "warmup_frac" and value > 1)):
+                raise ValueError(f"invalid {name}: expected a finite value in its training range")
         self.opt = torch.optim.AdamW(_param_groups([self.model, self.loss_fn], tc["weight_decay"]), lr=tc["lr"])
         self.grad_clip = tc["grad_clip"]
         self.max_steps = tc.get("max_steps_per_epoch")

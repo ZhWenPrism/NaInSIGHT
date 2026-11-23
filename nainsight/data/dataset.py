@@ -61,6 +61,11 @@ def validate_pack(pack: dict) -> None:
     if positions.ndim != 1 or positions.dtype.kind not in "iu":
         raise ValueError("lmk_pos must be a one-dimensional integer vector")
     lmk = offsets("lmk_offsets", positions.size)
+    landmark_stays = array("lmk_stay")
+    expected_stays = np.repeat(np.arange(stays.size), np.diff(lmk))
+    if (landmark_stays.shape != positions.shape or landmark_stays.dtype.kind not in "iu"
+            or not np.array_equal(landmark_stays, expected_stays)):
+        raise ValueError("lmk_stay must match the stays defined by lmk_offsets")
     lengths = np.repeat(np.diff(tok), np.diff(lmk))
     if ((positions < 0) | (positions >= lengths)).any():
         raise ValueError("lmk_pos must index a token within its stay")

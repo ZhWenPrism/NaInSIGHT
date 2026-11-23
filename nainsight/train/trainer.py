@@ -16,6 +16,7 @@ from torch.utils.data import DataLoader
 
 from ..data.dataset import Collator, LengthBucketSampler, StayDataset
 from ..model.heads import CoherentMultiTaskHead
+from ..utils import save_checkpoint
 from .metrics import landmark_metrics, validation_score
 
 
@@ -60,6 +61,14 @@ class Trainer:
                 continue
             if isinstance(value, (bool, np.bool_)) or not isinstance(value, Integral) or value < 1:
                 raise ValueError(f"{name} must be a positive integer")
+        for name in ("lr", "weight_decay", "grad_clip", "warmup_frac"):
+            if name == "warmup_frac" and name not in tc:
+                continue
+            value = tc[name]
+            if (isinstance(value, (bool, np.bool_)) or not math.isfinite(value)
+                    or value < 0 or (name in ("lr", "grad_clip") and value == 0)
+                    or (name == "warmup_frac" and value > 1)):
+                raise ValueError(f"invalid {name}: expected a finite value in its training range")
         self.opt = torch.optim.AdamW(_param_groups([self.model, self.loss_fn], tc["weight_decay"]), lr=tc["lr"])
         self.grad_clip = tc["grad_clip"]
         self.max_steps = tc.get("max_steps_per_epoch")
@@ -144,7 +153,7 @@ class Trainer:
             self.log.info("epoch %d | loss %.4f | val score %.4f | %.0fs", epoch, tr.get("total", np.nan), score, rec["seconds"])
             if np.isfinite(score) and score > best:
                 best, best_epoch, wait = score, epoch, 0
-                torch.save({"model": self.model.state_dict(), "loss": self.loss_fn.state_dict(), "epoch": epoch,
+                save_checkpoint({"model": self.model.state_dict(), "loss": self.loss_fn.state_dict(), "epoch": epoch,
                             "val_score": score}, self.run_dir / "best.pt")
             else:
                 wait += 1
@@ -152,6 +161,6 @@ class Trainer:
                     self.log.info("early stopping at epoch %d (best %d)", epoch, best_epoch)
                     break
         if best_epoch < 0:                                           # no finite validation score: keep last
-            torch.save({"model": self.model.state_dict(), "loss": self.loss_fn.state_dict(), "epoch": epoch,
+            save_checkpoint({"model": self.model.state_dict(), "loss": self.loss_fn.state_dict(), "epoch": epoch,
                         "val_score": float("nan")}, self.run_dir / "best.pt")
         return {"best_val_score": best, "best_epoch": best_epoch}

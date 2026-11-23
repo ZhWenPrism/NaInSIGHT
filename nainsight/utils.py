@@ -108,6 +108,23 @@ def save_json(obj: Any, path: str | Path) -> None:
             temporary.unlink(missing_ok=True)
 
 
+def save_checkpoint(state: dict, path: str | Path) -> None:
+    import torch
+
+    path = Path(path).resolve()
+    ensure_dir(path.parent)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(dir=path.parent, prefix=f".{path.name}.",
+                                         suffix=".tmp", delete=False) as handle:
+            temporary = Path(handle.name)
+        torch.save(state, temporary)
+        temporary.replace(path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
 def load_json(path: str | Path) -> Any:
     with open(path, "r", encoding="utf-8") as fh:
         return json.load(fh)

@@ -12,6 +12,7 @@ def pack_data():
         "tok_offsets": np.array([0, 2, 5]),
         "lmk_offsets": np.array([0, 1, 2]),
         **{f"tok_{field}": np.zeros(5) for field in TOKEN_FIELDS},
+        "lmk_stay": np.array([0, 1]),
         "lmk_pos": np.array([1, 2]),
         "lmk_time": np.array([0., 1.]),
         "lmk_mode": np.zeros(2, dtype=np.int8),
